@@ -23,11 +23,11 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
     
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
+    - name: Make gradlew executable
+      run: chmod +x ./gradlew
     
     - name: Build with Gradle
-      run: gradle bootJar
+      run: ./gradlew bootJar
     
     - name: Log in to Docker Hub
       uses: docker/login-action@v3
