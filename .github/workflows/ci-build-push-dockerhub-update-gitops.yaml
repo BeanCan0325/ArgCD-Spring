@@ -7,7 +7,7 @@ on:
 env:
   IMAGE_NAME: docker.io/beancan0325/demo
   GITOPS_REPO: BeanCan0325/ArgoCD
-  GITOPS_BRANCH: master
+  GITOPS_BRANCH: main
   KUSTOMIZE_FILE: apps/demo/kustomization.yaml
 
 jobs:
@@ -50,7 +50,7 @@ jobs:
           FILE="gitops/${{ env.KUSTOMIZE_FILE }}"
           TAG="${{ steps.meta.outputs.tag }}"
           echo "Updating ${FILE} -> newTag: ${TAG}"
-          sed -i "s|#newTag: .*|newTag: ${TAG}|g" "${FILE}"
+          sed -i "s|newTag: .*|newTag: ${TAG}|g" "${FILE}"
           echo "---- updated file ----"
           cat "${FILE}"
 
