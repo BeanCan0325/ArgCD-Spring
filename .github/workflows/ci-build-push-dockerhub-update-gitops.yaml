@@ -1,0 +1,64 @@
+name: CI Build/Push and Update GitOps
+
+on:
+  push:
+    branches: ["master"]
+
+env:
+  IMAGE_NAME: docker.io/beancan0325/demo
+  GITOPS_REPO: BeanCan0325/ArgoCD
+  GITOPS_BRANCH: master
+  KUSTOMIZE_FILE: apps/demo/kustomization.yaml
+
+jobs:
+  build_push_update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout app repo
+        uses: actions/checkout@v4
+
+      - name: Set image tag (short sha)
+        id: meta
+        run: |
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          echo "tag=${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
+
+      - name: Checkout gitops repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.GITOPS_REPO }}
+          ref: ${{ env.GITOPS_BRANCH }}
+          token: ${{ secrets.GITOPS_REPO_TOKEN }}
+          path: gitops
+
+      - name: Update image tag in kustomization.yaml
+        run: |
+          FILE="gitops/${{ env.KUSTOMIZE_FILE }}"
+          TAG="${{ steps.meta.outputs.tag }}"
+          echo "Updating ${FILE} -> newTag: ${TAG}"
+          sed -i "s|#newTag: .*|newTag: ${TAG}|g" "${FILE}"
+          echo "---- updated file ----"
+          cat "${FILE}"
+
+      - name: Commit and push changes to gitops repo
+        run: |
+          cd gitops
+          git config user.name "BeanCan0325"
+          git config user.email "본인이메일@example.com"
+          git add "${{ env.KUSTOMIZE_FILE }}"
+          git commit -m "chore: deploy demo image ${{ steps.meta.outputs.tag }}" || exit 0
+          git push
